@@ -1,77 +1,103 @@
-## Writeup Template
-### You can use this file as a template for your writeup if you want to submit it as a markdown file, but feel free to use some other method and submit a pdf if you prefer.
+## Udacity SDCND - Term 1, Project 5
 
+### **Vehicle Detection** ###
 ---
 
-**Vehicle Detection Project**
 
-The goals / steps of this project are the following:
-
-* Perform a Histogram of Oriented Gradients (HOG) feature extraction on a labeled training set of images and train a classifier Linear SVM classifier
-* Optionally, you can also apply a color transform and append binned color features, as well as histograms of color, to your HOG feature vector. 
-* Note: for those first two steps don't forget to normalize your features and randomize a selection for training and testing.
-* Implement a sliding-window technique and use your trained classifier to search for vehicles in images.
-* Run your pipeline on a video stream (start with the test_video.mp4 and later implement on full project_video.mp4) and create a heat map of recurring detections frame by frame to reject outliers and follow detected vehicles.
-* Estimate a bounding box for vehicles detected.
-
-[//]: # (Image References)
-[image1]: ./examples/car_not_car.png
-[image2]: ./examples/HOG_example.jpg
-[image3]: ./examples/sliding_windows.jpg
-[image4]: ./examples/sliding_window.jpg
-[image5]: ./examples/bboxes_and_heat.png
-[image6]: ./examples/labels_map.png
-[image7]: ./examples/output_bboxes.png
-[video1]: ./project_video.mp4
-
-## [Rubric](https://review.udacity.com/#!/rubrics/513/view) Points
-### Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
-
----
 ### Writeup / README
 
-#### 1. Provide a Writeup / README that includes all the rubric points and how you addressed each one.  You can submit your writeup as markdown or pdf.  [Here](https://github.com/udacity/CarND-Vehicle-Detection/blob/master/writeup_template.md) is a template writeup for this project you can use as a guide and a starting point.  
+#### 1. Provide a Writeup / README that includes all the rubric points and how you addressed each one.
 
-You're reading it!
+This file *__is__* the Writeup Report.
+
+---
+---
 
 ### Histogram of Oriented Gradients (HOG)
 
 #### 1. Explain how (and identify where in your code) you extracted HOG features from the training images.
 
-The code for this step is contained in the first code cell of the IPython notebook (or in lines # through # of the file called `some_file.py`).  
+The HOG features are extracted using the Udacity classroom code in the method **get_hog_features()** defined at `Cell 05`. 
 
-I started by reading in all the `vehicle` and `non-vehicle` images.  Here is an example of one of each of the `vehicle` and `non-vehicle` classes:
+The method is called with the following parameters:
+* Orientation = 9
+* Pixels per cell = (8, 8)
+* Cells per block = (2, 2)
+* Block Normalization = L2-Hys
 
-![alt text][image1]
+---
 
-I then explored different color spaces and different `skimage.hog()` parameters (`orientations`, `pixels_per_cell`, and `cells_per_block`).  I grabbed random images from each of the two classes and displayed them to get a feel for what the `skimage.hog()` output looks like.
+For processing the training data, the **extract_features()** method defined at `Cell 08` is called. It is responsible for:
+1. Converting image to _YCrCb_ color space, `Line 17`.
+2. Extracting spatial bin features of the image, `Line 31`.
+3. Extracting the color historgram features of the image using **color_hist()** method, ` Line 34`. 
+4. Extracting the HOG features for one or all of the channels using the **get_hog_features()** method mentioned above, `Line 38`.
 
-Here is an example using the `YCrCb` color space and HOG parameters of `orientations=8`, `pixels_per_cell=(8, 8)` and `cells_per_block=(2, 2)`:
-
-
-![alt text][image2]
+---
 
 #### 2. Explain how you settled on your final choice of HOG parameters.
 
-I tried various combinations of parameters and...
+The parameters for HOG and other features are specified in `Cell 13`.
 
-#### 3. Describe how (and identify where in your code) you trained a classifier using your selected HOG features (and color features if you used them).
+```python
+colorspace = 'YCrCb'
+orient = 9
+pix_per_cell = 8
+cell_per_block = 2
+hog_channel = 0
+hist_bins = 32
+spatial_size = (32, 32)
+```
 
-I trained a linear SVM using...
+Experimenting with different color spaces, I found that *YUV* and *YCrCb* spaces give the best results. Isolating the Y channel gives slightly better test accuracy and fewer false positives, so I've utilized only the Y channel while extracting the HOG features.
+
+Further, resizing down to (32, 32) still maintains enough information to detect the vehicles correctly. 
+
+Lastly, I have left the *orientation* count at 9 because increasing did not result in any significant increase in accuracy.
+
+The total feature length comes out to be **4932**.
+
+#### 3. Describe how  you trained a classifier
+
+The features were normalized using the **StandardScaler()** at `Cell
+
+The training is done in `Cells 15 - 19`.
+
+I have attempted a GridSearch using both **SVC** and **LinearSVC**. I was able to get a much better model using SVC. The results of the GridSearch can be found at `Cell 16`.
+
+```
+The best score is 0.9932 with :
+
+SVC(C=10, cache_size=200, class_weight=None, coef0=0.0,
+  decision_function_shape='ovr', degree=3, gamma='auto', kernel='rbf',
+  max_iter=-1, probability=False, random_state=None, shrinking=True,
+  tol=0.05, verbose=False)
+ ```
+  
+The SVC is initialized and train with these optimum hyper-parameters at `Cell 17` and returns a good test accuracy.
+  
+  ```
+163.63 Seconds to train SVC...
+Test Accuracy of SVC =  0.9935
+```
+
+---
+---
 
 ### Sliding Window Search
 
-#### 1. Describe how (and identify where in your code) you implemented a sliding window search.  How did you decide what scales to search and how much to overlap windows?
+#### 1. Describe how you implemented a sliding window search. 
 
-I decided to search random window positions at random scales all over the image and came up with this (ok just kidding I didn't actually ;):
+Witih a few modifications, I have utilized the **find_cars()** method from the Udacity classroom. It is defined in `Cell 24`. 
 
-![alt text][image3]
+This method uses the subsampling approach to extract HOG features. It makes a prediction on the features and returns the bounding boxes with positive predictions.
 
 #### 2. Show some examples of test images to demonstrate how your pipeline is working.  What did you do to optimize the performance of your classifier?
 
 Ultimately I searched on two scales using YCrCb 3-channel HOG features plus spatially binned color and histograms of color in the feature vector, which provided a nice result.  Here are some example images:
 
 ![alt text][image4]
+---
 ---
 
 ### Video Implementation
@@ -97,7 +123,7 @@ Here's an example result showing the heatmap from a series of frames of video, t
 ![alt text][image7]
 
 
-
+---
 ---
 
 ### Discussion
