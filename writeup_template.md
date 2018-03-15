@@ -92,43 +92,45 @@ Witih a few modifications, I have utilized the **find_cars()** method from the U
 
 This method uses the subsampling approach to extract HOG features. It makes a prediction on the features and returns the bounding boxes with positive predictions.
 
-#### 2. Show some examples of test images to demonstrate how your pipeline is working.  What did you do to optimize the performance of your classifier?
+The window size is 64x64 pixels with a scale of 1.5 (The region of interest is scaled down). Since a constant window size was giving reasonable results, I did not attempt to break down the area into windows with various sizes.
 
-Ultimately I searched on two scales using YCrCb 3-channel HOG features plus spatially binned color and histograms of color in the feature vector, which provided a nice result.  Here are some example images:
+One important change, as highlighted before, is to ignore the 400 pixels on the left of the image. This was done to speed up the video processing since the hardware is not suitable for this task and takes over an hour to generate a project output video. The change was made at the suggestion of our Udacity Session Lead.
 
-![alt text][image4]
+#### 2. Show some examples of test images to demonstrate how your pipeline is working. 
+
+The below images provide a simple demonstration of the pipeline. 
+
+The subsampling approach provides some performance improvement over a pure sliding window approach.
+
 ---
 ---
 
 ### Video Implementation
 
-#### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (somewhat wobbly or unstable bounding boxes are ok as long as you are identifying the vehicles most of the time with minimal false positives.)
-Here's a [link to my video result](./project_video.mp4)
+#### 1. Provide a link to your final video output.  
 
+The main output video is [here](/test_videos_output/project_video_output.mp4).
+
+The model performs reasonably well. It is not too wobbly (but nor is it perfectly smooth). However, there are no false positives. This was achieved by using a 3-dimensional heatstack, across the last 20 frames (More details in below sections).
 
 #### 2. Describe how (and identify where in your code) you implemented some kind of filter for false positives and some method for combining overlapping bounding boxes.
 
-I recorded the positions of positive detections in each frame of the video.  From the positive detections I created a heatmap and then thresholded that map to identify vehicle positions.  I then used `scipy.ndimage.measurements.label()` to identify individual blobs in the heatmap.  I then assumed each blob corresponded to a vehicle.  I constructed bounding boxes to cover the area of each blob detected.  
+The main **video_pipeline()** is at `Cell 40`. For the purpose of eliminating false positives, I am using a global **deque** object named _heatstack_. The heatstack, is essentially, a collection of the heatmaps from the past 20 frames.
 
-Here's an example result showing the heatmap from a series of frames of video, the result of `scipy.ndimage.measurements.label()` and the bounding boxes then overlaid on the last frame of video:
-
-### Here are six frames and their corresponding heatmaps:
-
-![alt text][image5]
-
-### Here is the output of `scipy.ndimage.measurements.label()` on the integrated heatmap from all six frames:
-![alt text][image6]
-
-### Here the resulting bounding boxes are drawn onto the last frame in the series:
-![alt text][image7]
-
+Note that at no point is *ANY* kind of threshold applied on the heatmaps. A mean is taken over the heatstack and converted to _Int32_. As a result, an area needs to be detected by _at least_ one box per frame (on average) across 20 frames, in order to be drawn on screen.
 
 ---
 ---
 
 ### Discussion
 
-#### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
+#### 1. Briefly discuss any problems / issues you faced in your implementation of this project. 
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+On this project, building the pipeline was not difficult. Two challenging aspects were finding the optimum HOG features and selecting the appropriate model with its hyperparameters. GridSearch greatly helped in this regard.
+
+While there are no false positives, it can be seen that at the very end of the video, the last car is not detected by the model. This could perhaps be improved by scaling the window to different sizes based on its position on the screen.
+
+Further, the bounding box surrounding the car is not perfect and keeps shifting. This can be fixed through some advanced tracking to lock on to a vehicle till it is no longer detected and fixing a minimum bounding box.
+
+Lastly, due to the 3-dimensional heatstack approach, there is a chance of false positives in the initial frames. To avoid this, the stack had to be filled with dummy values (0). This could result in a false negative.
 
