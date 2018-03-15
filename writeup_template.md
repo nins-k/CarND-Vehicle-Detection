@@ -59,7 +59,7 @@ The total feature length comes out to be **4932**.
 
 #### 3. Describe how  you trained a classifier
 
-The features were normalized using the **StandardScaler()** at `Cell
+The features were normalized using the **StandardScaler()** at `Cell 14, Line 15`.
 
 The training is done in `Cells 15 - 19`.
 
